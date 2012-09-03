@@ -21,9 +21,12 @@ module GHI
             assigns[:state] = state
           end
           opts.on(
-            '-L', '--label <labelname>...', Array, 'by label(s)'
+            '-L', '--label <labelname>|<~excluded>...', Array, 'by label(s), issues with excluded labels filtered out'
           ) do |labels|
-            (assigns[:labels] ||= []).concat labels
+            reject_label = /\A~/
+            unwanted, wanted = labels.partition {|l| reject_label =~ l }
+            (assigns[:labels] ||= []).concat wanted
+            (assigns[:reject_labels] ||= []).concat unwanted.map {|l| l.gsub(reject_label,'') }
           end
           opts.on(
             '-S', '--sort <by>', %w(created updated comments),
@@ -113,6 +116,13 @@ module GHI
           print "\r#{CURSOR[:up][1]}" if header && paginate?
           page header do
             issues = res.body
+            unless assigns[:reject_labels].empty?
+              issues = issues.reject  do |i|
+                i["labels"].any? do |label|
+                  assigns[:reject_labels].include? label["name"]    
+                end
+              end
+            end
             if verbose
               puts issues.map { |i| format_issue i }
             else
