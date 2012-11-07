@@ -29,6 +29,11 @@ module GHI
             (assigns[:reject_labels] ||= []).concat unwanted.map {|l| l.gsub(reject_label,'') }
           end
           opts.on(
+            '-N', '--not-label <labelname>...', Array, 'exclude issues with label(s)'
+          ) do |labels|
+            (assigns[:exclude_labels] ||= []).concat labels
+          end
+          opts.on(
             '-S', '--sort <by>', %w(created updated comments),
             {'c'=>'created','u'=>'updated','m'=>'comments'},
             "'created', 'updated', or 'comments'"
@@ -116,10 +121,10 @@ module GHI
           print "\r#{CURSOR[:up][1]}" if header && paginate?
           page header do
             issues = res.body
-            unless assigns[:reject_labels].empty?
+            if assigns[:exclude_labels]
               issues = issues.reject  do |i|
                 i["labels"].any? do |label|
-                  assigns[:reject_labels].include? label["name"]    
+                  assigns[:exclude_labels].include? label["name"]    
                 end
               end
             end
